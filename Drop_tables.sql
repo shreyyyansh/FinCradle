@@ -1,0 +1,19 @@
+USE finance_db;
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+DROP VIEW IF EXISTS category_leak_view;
+
+DROP TABLE IF EXISTS card_rewards;
+DROP TABLE IF EXISTS credit_cards;
+DROP TABLE IF EXISTS card_recommendations;
+DROP TABLE IF EXISTS credit_card_benefits;
+DROP TABLE IF EXISTS banks;
+
+
+DROP TABLE IF EXISTS expenses;
+DROP TABLE IF EXISTS income;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS users;
+
+SET FOREIGN_KEY_CHECKS = 1;

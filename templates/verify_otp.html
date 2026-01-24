@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Verify OTP - FinCradle</title>
+<link rel="stylesheet" href="/static/style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+
+<div class="topbar">
+    <div class="brand">FinCradle</div>
+</div>
+
+<div class="container" style="max-width:420px;margin-top:80px">
+
+    <div class="card">
+        <h2 style="text-align:center;">Verify Your Email</h2>
+        <p style="text-align:center;color:var(--muted);margin-bottom:2rem">
+            Enter the 6-digit OTP sent to your email
+        </p>
+
+        <form method="POST">
+            <input class="input" name="otp" placeholder="Enter 6-digit OTP" maxlength="6" required style="text-align:center;font-size:1.5rem;letter-spacing:0.5rem">
+            <button style="width:100%;margin-top:10px;">Verify & Continue</button>
+        </form>
+
+        <p style="text-align:center;margin-top:20px;color:var(--muted);font-size:0.9rem">
+            Didn't receive OTP? Check spam or try again.
+        </p>
+    </div>
+
+</div>
+
+</body>
+</html>

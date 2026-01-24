@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Manage Categories - FinCradle</title>
+<link rel="stylesheet" href="/static/style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+
+<!-- ========== TOP BAR ========== -->
+<div class="topbar">
+    <div class="hamburger" id="menuBtn" onclick="toggleMenu()">☰</div>
+    <a href="/dashboard" class="brand">FinCradle</a>
+</div>
+
+<!-- ========== SIDEBAR ========== -->
+<div class="sidebar" id="sideMenu">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/ai-advisor">AI Advisor</a>
+    <a href="/categories">Manage Categories</a>
+    <a href="/download-pdf">Download PDF</a>
+    <a href="/logout">Logout</a>
+</div>
+
+<div class="container">
+
+<h2 style="color:white;text-align:center;margin-bottom:2rem">Manage Categories</h2>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:2rem">
+
+    <!-- ========== ADD CATEGORY ========== -->
+    <div class="card">
+        <h3 style="margin-top:0">➕ Add New Category</h3>
+
+        <form method="POST">
+            <input class="input" name="name" placeholder="Category name (e.g., Salary, Groceries)" required>
+
+            <select class="input" name="type">
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+            </select>
+
+            <div style="margin:1rem 0">
+                <label>
+                    <input type="checkbox" name="weekly"> 
+                    Weekly Tracking
+                </label>
+                <label>
+                    <input type="checkbox" name="monthly"> 
+                    Monthly Tracking
+                </label>
+                <label>
+                    <input type="checkbox" name="yearly"> 
+                    Yearly Tracking
+                </label>
+            </div>
+
+            <button style="width:100%">Add Category</button>
+        </form>
+    </div>
+
+    <!-- ========== EXISTING CATEGORIES ========== -->
+    <div class="card">
+        <h3 style="margin-top:0">Existing Categories</h3>
+
+        <table>
+            <tr>
+                <th>Category Name</th>
+                <th>Type</th>
+                <th style="text-align:center">Action</th>
+            </tr>
+
+            {% for c in categories %}
+            <tr>
+                <td style="font-weight:600">{{ c.name }}</td>
+                <td>
+                    {% if c.type == 'income' %}
+                        <span class="bg-success">Income</span>
+                    {% else %}
+                        <span class="bg-danger">Expense</span>
+                    {% endif %}
+                </td>
+                <td style="text-align:center">
+                    <a href="/delete-category/{{ c.category_id }}" 
+                       onclick="return confirm('Are you sure you want to delete this category?')"
+                       style="color:var(--danger);font-weight:700;font-size:1.2rem">
+                        🗑️
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        {% if not categories %}
+        <p style="text-align:center;color:var(--muted);margin:2rem 0">
+            No categories yet. Add your first category above!
+        </p>
+        {% endif %}
+
+    </div>
+
+</div>
+
+</div>
+
+<script>
+let open = false;
+
+function toggleMenu(){
+    let menu = document.getElementById("sideMenu");
+    let btn = document.getElementById("menuBtn");
+
+    if(open){
+        menu.classList.remove("open");
+        btn.innerHTML = "☰";
+    }else{
+        menu.classList.add("open");
+        btn.innerHTML = "✖";
+    }
+
+    open = !open;
+}
+</script>
+
+</body>
+</html>

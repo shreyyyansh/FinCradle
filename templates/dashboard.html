@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dashboard - FinCradle</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+
+<!-- ========== TOP BAR ========== -->
+<div class="topbar">
+    <div class="hamburger" id="menuBtn" onclick="toggleMenu()">☰</div>
+    <a href="/dashboard" class="brand">FinCradle</a>
+</div>
+
+<!-- ========== SIDEBAR ========== -->
+<div class="sidebar-overlay" id="sideOverlay" onclick="toggleMenu()"></div>
+<div class="sidebar" id="sideMenu">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/ai-advisor">AI Advisor</a>
+    <a href="/categories">Manage Categories</a>
+    <a href="/download-pdf">Download PDF</a>
+    <a href="/logout">Logout</a>
+</div>
+
+<div class="container">
+
+<h2 style="color:white;text-align:center;margin-bottom:2rem;text-shadow: 0 2px 10px rgba(0,0,0,0.3)">Financial Dashboard</h2>
+<p id="error" style="display:none"></p>
+
+<!-- ================= QUICK ACTIONS ================= -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem;margin-bottom:2rem">
+    
+    <div class="card">
+        <h3 style="margin-top:0;color:var(--success)">Add Income</h3>
+        <form id="incomeForm" method="POST" action="/add-income">
+            <input class="input" id="incomeAmount" name="amount" placeholder="Amount (₹)" required>
+            <select class="input" name="category">
+                {% for c in income_categories %}
+                <option value="{{ c.category_id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" style="width:100%">Add Income</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0;color:var(--danger)">Add Expense</h3>
+        <form id="expenseForm" method="POST" action="/add-expense">
+            <input class="input" id="expenseAmount" name="amount" placeholder="Amount (₹)" required>
+            <select class="input" name="category">
+                {% for c in expense_categories %}
+                <option value="{{ c.category_id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+            <input class="input" name="note" placeholder="Note (optional)">
+            <button type="submit" style="width:100%">Add Expense</button>
+        </form>
+    </div>
+
+</div>
+
+<!-- ================= SAVINGS ================= -->
+<div class="card" style="background:linear-gradient(135deg,#0066ff,#0052cc);color:white;text-align:center;box-shadow: 0 8px 32px rgba(0, 102, 255, 0.3)">
+    <h3 style="margin:0;color:white;font-size:2.5rem;text-shadow: 0 2px 8px rgba(0,0,0,0.2)">₹{{ savings }}</h3>
+    <p style="font-size:1.2rem;margin:0.5rem 0 0 0;opacity:0.95">Total Savings</p>
+</div>
+
+<!-- ================= AI INSIGHTS ================= -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:1.5rem;margin:2rem 0">
+    <div class="card">
+        <h3 style="margin-top:0">⚠️ Overspending Alert</h3>
+        <div id="over" style="margin:0">Loading insights...</div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0">Spending Trend</h3>
+        <div id="trend" style="margin:0">Analyzing patterns...</div>
+    </div>
+</div>
+
+<!-- ================= INCOME VS EXPENSE ================= -->
+<div class="card">
+    <h3 style="margin-top:0">Income vs Expense Overview</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem">
+        <div style="max-height:300px;position:relative">
+            <canvas id="financeLine"></canvas>
+        </div>
+        <div style="max-height:300px;max-width:300px;margin:0 auto;position:relative">
+            <canvas id="financePie"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ================= WEEKLY REPORT ================= -->
+<div class="card">
+    <h3 style="margin-top:0">Weekly Report</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem">
+        <div style="max-height:300px;position:relative">
+            <canvas id="weeklyBar"></canvas>
+        </div>
+        <div style="max-height:300px;max-width:300px;margin:0 auto;position:relative">
+            <canvas id="weeklyPie"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MONTHLY REPORT ================= -->
+<div class="card">
+    <h3 style="margin-top:0">Monthly Report</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem">
+        <div style="max-height:300px;position:relative">
+            <canvas id="monthlyBar"></canvas>
+        </div>
+        <div style="max-height:300px;max-width:300px;margin:0 auto;position:relative">
+            <canvas id="monthlyPie"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- ================= YEARLY REPORT ================= -->
+<div class="card">
+    <h3 style="margin-top:0">Yearly Report</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.5rem">
+        <div style="max-height:300px;position:relative">
+            <canvas id="yearlyBar"></canvas>
+        </div>
+        <div style="max-height:300px;max-width:300px;margin:0 auto;position:relative">
+            <canvas id="yearlyPie"></canvas>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<script>
+let charts = {};
+let open = false;
+
+/* ========= MENU ========= */
+function toggleMenu(){
+    let menu = document.getElementById("sideMenu");
+    let overlay = document.getElementById("sideOverlay");
+    let btn = document.getElementById("menuBtn");
+
+    if(open){
+        menu.classList.remove("open");
+        overlay.classList.remove("active");
+        btn.innerHTML = "☰";
+        document.body.style.overflow = "";
+    }else{
+        menu.classList.add("open");
+        overlay.classList.add("active");
+        btn.innerHTML = "✖";
+        document.body.style.overflow = "hidden";
+    }
+    open = !open;
+}
+
+/* ========= VALIDATION ========= */
+function isValidNumber(val){
+    return !isNaN(val) && val.trim() !== "";
+}
+
+document.getElementById("incomeForm").addEventListener("submit", function(e){
+    let amt = document.getElementById("incomeAmount");
+    if(!isValidNumber(amt.value)){
+        e.preventDefault();
+        let err = document.getElementById("error");
+        err.innerText = "⚠️ Please enter a valid numeric income amount";
+        err.style.display = "block";
+        return;
+    }
+});
+
+document.getElementById("expenseForm").addEventListener("submit", function(e){
+    let amt = document.getElementById("expenseAmount");
+    if(!isValidNumber(amt.value)){
+        e.preventDefault();
+        let err = document.getElementById("error");
+        err.innerText = "⚠️ Please enter a valid numeric expense amount";
+        err.style.display = "block";
+        return;
+    }
+});
+
+/* ========= AI TEXT ========= */
+function loadText(){
+    fetch("/overspend").then(r=>r.json()).then(d=>{
+        document.getElementById("over").innerText = d.message;
+    }).catch(()=>{
+        document.getElementById("over").innerText = "Unable to load insights";
+    });
+    
+    fetch("/trend").then(r=>r.json()).then(d=>{
+        document.getElementById("trend").innerText = d.trend;
+    }).catch(()=>{
+        document.getElementById("trend").innerText = "Unable to analyze trends";
+    });
+}
+
+/* ========= CHARTS ========= */
+function render(url, barId, pieId, key){
+    fetch(url+"?t="+Date.now()).then(r=>r.json()).then(d=>{
+        let data = d[key];
+        if(!data || data.length===0) return;
+
+        let labels=data.map(x=>x[0]);
+        let values=data.map(x=>x[1]);
+
+        if(charts[barId]) charts[barId].destroy();
+        if(charts[pieId]) charts[pieId].destroy();
+
+        charts[barId]=new Chart(document.getElementById(barId),{
+            type:"bar",
+            data:{
+                labels:labels,
+                                    datasets:[{
+                    data:values,
+                    backgroundColor: 'rgba(0, 102, 255, 0.8)',
+                    borderColor: 'rgba(0, 102, 255, 1)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        charts[pieId]=new Chart(document.getElementById(pieId),{
+            type:"pie",
+            data:{
+                labels:labels,
+                datasets:[{
+                    data:values,
+                    backgroundColor: [
+                        'rgba(0, 102, 255, 0.85)',
+                        'rgba(0, 212, 255, 0.85)',
+                        'rgba(0, 200, 150, 0.85)',
+                        'rgba(255, 71, 87, 0.85)',
+                        'rgba(52, 73, 94, 0.85)',
+                        'rgba(0, 102, 255, 0.65)',
+                        'rgba(0, 212, 255, 0.65)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 1
+            }
+        });
+    });
+}
+
+function renderFinance(){
+    fetch("/income-expense?t="+Date.now()).then(r=>r.json()).then(d=>{
+        let data=d.finance;
+        if(!data) return;
+
+        let labels=data.map(x=>x.date);
+        let income=data.map(x=>x.income);
+        let expense=data.map(x=>x.expense);
+
+        if(charts.financeLine) charts.financeLine.destroy();
+        if(charts.financePie) charts.financePie.destroy();
+
+        charts.financeLine=new Chart(financeLine,{
+            type:"line",
+            data:{
+                labels:labels,
+                datasets:[
+                    {
+                        label:"Income",
+                        data:income,
+                        borderColor:"rgb(0, 200, 150)",
+                        backgroundColor:"rgba(0, 200, 150, 0.1)",
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 3
+                    },
+                    {
+                        label:"Expense",
+                        data:expense,
+                        borderColor:"rgb(255, 71, 87)",
+                        backgroundColor:"rgba(255, 71, 87, 0.1)",
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 2,
+                interaction: {
+                    intersect: false
+                }
+            }
+        });
+
+        charts.financePie=new Chart(financePie,{
+            type:"pie",
+            data:{
+                labels:["Income","Expense"],
+                datasets:[{
+                    data:[
+                        income.reduce((a,b)=>a+b,0),
+                        expense.reduce((a,b)=>a+b,0)
+                    ],
+                    backgroundColor: [
+                        'rgba(0, 200, 150, 0.85)',
+                        'rgba(255, 71, 87, 0.85)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 1
+            }
+        });
+    });
+}
+
+function loadCharts(){
+    render("/weekly-report","weeklyBar","weeklyPie","weekly");
+    render("/monthly-report","monthlyBar","monthlyPie","monthly");
+    render("/yearly-report","yearlyBar","yearlyPie","yearly");
+    renderFinance();
+}
+
+loadText();
+loadCharts();
+setInterval(loadText,5000);
+setInterval(loadCharts,5000);
+</script>
+
+</body>
+</html>
