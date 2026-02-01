@@ -1,45 +1,63 @@
 from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 from extensions import db
+from models.income import Income
 from models.expense import Expense
-from models.category import Category
-from models.credit_card import CreditCard
 from models.card_reward import CardReward
+from models.credit_card import CreditCard
 
 advisor = Blueprint("advisor", __name__)
 
-@advisor.route("/ai-advisor")
+@advisor.route("/advisor")
 @login_required
-def ai_advisor():
+def advisor_home():
 
-    expenses = Expense.query.filter_by(user_id=current_user.user_id).all()
-    cards = CreditCard.query.all()
-    rewards = CardReward.query.all()
+    # ---------- TOTALS ----------
+    total_income = db.session.query(
+        db.func.coalesce(db.func.sum(Income.amount), 0)
+    ).filter_by(user_id=current_user.user_id).scalar()
 
-    report = []
-    total_missed = 0
+    total_expense = db.session.query(
+        db.func.coalesce(db.func.sum(Expense.amount), 0)
+    ).filter_by(user_id=current_user.user_id).scalar()
 
-    for e in expenses:
-        best = None
-        best_cashback = 0
+    # ---------- OVESPENDING ----------
+    overspending = None
+    if total_income > 0 and total_expense > total_income:
+        overspending = "You are spending more than your income."
+    elif total_income > 0 and total_expense / total_income > 0.7:
+        overspending = "Your expenses exceed 70% of your income."
+    else:
+        overspending = "Your spending is under control."
 
-        for r in rewards:
-            if r.category_id == e.category_id:
-                cashback = (r.cashback_percent/100) * e.amount
-                if cashback > best_cashback:
-                    best_cashback = cashback
-                    best = CreditCard.query.get(r.card_id)
+    # ---------- TREND ----------
+    trend = "Add more transactions to detect trends."
+    if total_income > 0:
+        if total_expense < total_income * 0.5:
+            trend = "Excellent saving trend."
+        elif total_expense < total_income * 0.8:
+            trend = "Stable spending trend."
+        else:
+            trend = "Rising expense trend."
 
-        if best:
-            total_missed += best_cashback
-            report.append({
-                "category": e.category.name,
-                "amount": e.amount,
-                "best_card": best.card_name,
-                "bank": best.bank,
-                "cashback": round(best_cashback,2)
-            })
+    # ---------- CARD RECOMMENDATION ----------
+    card_tip = None
+    top_card = (
+    db.session.query(CreditCard.card_name, CreditCard.bank)
+    .join(CardReward, CreditCard.card_id == CardReward.card_id)
+    .order_by(CardReward.cashback_percent.desc())
+    .first()
+    )
 
-    return render_template("ai_advisor.html",
-                           report=report,
-                           total_missed=round(total_missed,2))
+
+    if top_card:
+        card_tip = f"Use {top_card.card_name} ({top_card.bank}) for maximum cashback."
+
+    return render_template(
+        "advisor.html",
+        income=total_income,
+        expense=total_expense,
+        overspending=overspending,
+        trend=trend,
+        card_tip=card_tip
+    )
